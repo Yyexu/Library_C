@@ -22,7 +22,7 @@ Page currentPage = PAGE_HOME;
 int main() {
     check_file(); // 你的文件检查函数
 
-    InitWindow(500, 600, "图书管理系统");
+    InitWindow(800, 600, "图书管理系统");
 
     // -----------------------------------------------------------
     // 1. 资源加载区 (必须在 while 循环之前！)
@@ -39,9 +39,9 @@ int main() {
     SetTextureFilter(bookTex, TEXTURE_FILTER_POINT);
 
     // 加载字体
-    const char* allChineseChars = "图书管理系统查询列表添加返回主页功能开发中暂无数据确认提交<>";
+    char* fileText = LoadFileText("chinese.txt");
     int codepointCount = 0;
-    int* codepoints = LoadCodepoints(allChineseChars, &codepointCount);
+    int* codepoints = LoadCodepoints(fileText, &codepointCount);
     Font globalFont = LoadFontEx("SourceHanSansSC-Regular.otf", 48, codepoints, codepointCount);
 
     // 设置 GUI 样式
@@ -51,6 +51,18 @@ int main() {
     GuiSetStyle(DEFAULT, TEXT_SPACING, 2);
 
     SetTargetFPS(60);
+
+    // 编辑框的状态初始化
+    char idBuf[32] = "", priceBuf[32] = "", amountBuf[32] = "", catBuf[32] = "";
+    char nameBuf[128] = "", authorBuf[128] = "", pubBuf[128] = "", isbnBuf[64] = "";
+
+    bool editId = false, editName = false, editAuthor = false, editPub = false;
+    bool editPrice = false, editAmount = false, editISBN = false, editCat = false;
+
+    bool showSuccessPopup = false; // 成功弹窗开关
+    bool showFailPopup = false;    // 失败弹窗开关
+    char failMessage[128] = "";    // 用来存具体的报错内容 (比如: "ID不能为空")
+
 
     // -----------------------------------------------------------
     // 2. 主循环
@@ -63,22 +75,22 @@ int main() {
         if (currentPage == PAGE_HOME) {
             const char* title = "< 图书管理系统 >";
             // 标题用大字号 40
-            DrawTextEx(globalFont, title, (Vector2) { (500 - MeasureTextEx(globalFont, title, 40, 2).x) / 2, 80 }, 40, 2, DARKGREEN);
+            DrawTextEx(globalFont, title, (Vector2) { (800 - MeasureTextEx(globalFont, title, 40, 2).x) / 2, 80 }, 40, 2, DARKGREEN);
 
-            float btnX = (500 - 200) / 2;
+            float btnX = (800 - 300) / 2;
 
             // 点击查询 -> 切换页面
-            if (GuiButton((Rectangle) { btnX, 180, 200, 50 }, "查询图书")) {
+            if (GuiButton((Rectangle) { btnX, 180, 300, 50 }, "查询图书")) {
                 currentPage = PAGE_SEARCH;
                 // 【注意】这里不要写 LoadTexture 和 DrawTexture！
                 // 这里只负责切换状态
             }
 
-            if (GuiButton((Rectangle) { btnX, 260, 200, 50 }, "图书列表")) {
+            if (GuiButton((Rectangle) { btnX, 260, 300, 50 }, "图书列表")) {
                 currentPage = PAGE_LIST;
             }
 
-            if (GuiButton((Rectangle) { btnX, 340, 200, 50 }, "添加图书")) {
+            if (GuiButton((Rectangle) { btnX, 340, 300, 50 }, "添加图书")) {
                 currentPage = PAGE_ADD;
             }
         }
@@ -100,21 +112,139 @@ int main() {
             }
 
             // 返回按钮
-            if (GuiButton((Rectangle) { 150, 400, 200, 50 }, "返回主页")) {
+            if (GuiButton((Rectangle) { 580, 20, 200, 50 }, "返回主页")) {
                 currentPage = PAGE_HOME;
             }
         }
         // ======================= 列表页面 =======================
         else if (currentPage == PAGE_LIST) {
             DrawTextEx(globalFont, "图书列表 - 暂无数据", (Vector2) { 100, 100 }, 30, 2, GRAY);
-            if (GuiButton((Rectangle) { 150, 400, 200, 50 }, "返回主页")) currentPage = PAGE_HOME;
+            if (GuiButton((Rectangle) { 580, 20, 200, 50 }, "返回主页")) currentPage = PAGE_HOME;
         }
+
+
         // ======================= 添加页面 =======================
         else if (currentPage == PAGE_ADD) {
+
+            if (showSuccessPopup || showFailPopup) GuiLock();
+
             DrawTextEx(globalFont, "添加新书", (Vector2) { 180, 50 }, 30, 2, BLACK);
-            GuiLabel((Rectangle) { 100, 150, 100, 30 }, "确认提交?");
-            if (GuiButton((Rectangle) { 150, 400, 200, 50 }, "返回主页")) currentPage = PAGE_HOME;
-        }
+
+            const char* labels[8] = { "ID", "书名", "作者", "出版社", "价格", "库存", "ISBN", "分类ID" };
+
+            if (GuiTextBox((Rectangle) { 100, 100, 300, 40 }, idBuf, 31, editId)) {
+                editId = !editId;
+                if (editId) { editName = false; editAuthor = false; editPub = false; editPrice = false; editAmount = false; editISBN = false; editCat = false; }
+            }
+
+            if (GuiTextBox((Rectangle) { 100, 160, 300, 40 }, nameBuf, 127, editName)) {
+                editName = !editName;
+                if (editName) { editId = false; editAuthor = false; editPub = false; editPrice = false; editAmount = false; editISBN = false; editCat = false; }
+            }
+
+            if (GuiTextBox((Rectangle) { 100, 220, 300, 40 }, authorBuf, 127, editAuthor)) {
+                editAuthor = !editAuthor;
+                if (editAuthor) { editId = false; editName = false; editPub = false; editPrice = false; editAmount = false; editISBN = false; editCat = false; }
+            }
+
+            if (GuiTextBox((Rectangle) { 100, 280, 300, 40 }, pubBuf, 127, editPub)) {
+                editPub = !editPub;
+                if (editPub) { editId = false; editName = false; editAuthor = false; editPrice = false; editAmount = false; editISBN = false; editCat = false; }
+            }
+
+            if (GuiTextBox((Rectangle) { 100, 340, 300, 40 }, priceBuf, 31, editPrice)) {
+                editPrice = !editPrice;
+                if (editPrice) { editId = false; editName = false; editAuthor = false; editPub = false; editAmount = false; editISBN = false; editCat = false; }
+            }
+
+            if (GuiTextBox((Rectangle) { 100, 400, 300, 40 }, amountBuf, 31, editAmount)) {
+                editAmount = !editAmount;
+                if (editAmount) { editId = false; editName = false; editAuthor = false; editPub = false; editPrice = false; editISBN = false; editCat = false; }
+            }
+
+            if (GuiTextBox((Rectangle) { 100, 460, 300, 40 }, isbnBuf, 63, editISBN)) {
+                editISBN = !editISBN;
+                if (editISBN) { editId = false; editName = false; editAuthor = false; editPub = false; editPrice = false; editAmount = false; editCat = false; }
+            }
+
+            if (GuiTextBox((Rectangle) { 100, 520, 300, 40 }, catBuf, 31, editCat)) {
+                editCat = !editCat;
+                if (editCat) { editId = false; editName = false; editAuthor = false; editPub = false; editPrice = false; editAmount = false; editISBN = false; }
+            }
+
+            for (int i = 0; i < 8; i++) {
+                GuiLabel((Rectangle) { 20, 105 + i * 60, 80, 30 }, labels[i]);
+            }
+
+            if (!showSuccessPopup && GuiButton((Rectangle) { 450, 520, 120, 40 }, "提交")) {
+
+
+                if (atoi(idBuf) == 0) {
+                    strcpy(failMessage, "添加失败：ID 不能为 0！");
+                    showFailPopup = true; 
+                }
+                else if (strlen(nameBuf) == 0) {
+                    strcpy(failMessage, "添加失败：书名不能为空！");
+                    showFailPopup = true;
+                }
+                else {
+
+                    Book* book = createBook(
+                        atoi(idBuf), nameBuf, authorBuf, pubBuf,
+                        atoi(priceBuf), atoi(amountBuf), isbnBuf, atoi(catBuf)
+                    );
+
+                    if (book != NULL) {
+
+                        free(book->name);
+                        free(book->author);
+                        free(book->publisher);
+                        free(book->isbn);
+                        free(book);
+
+                        memset(idBuf, 0, sizeof(idBuf)); memset(nameBuf, 0, sizeof(nameBuf));
+                        memset(authorBuf, 0, sizeof(authorBuf)); memset(pubBuf, 0, sizeof(pubBuf));
+                        memset(priceBuf, 0, sizeof(priceBuf)); memset(amountBuf, 0, sizeof(amountBuf));
+                        memset(isbnBuf, 0, sizeof(isbnBuf)); memset(catBuf, 0, sizeof(catBuf));
+
+                        editId = editName = editAuthor = editPub = editPrice = editAmount = editISBN = editCat = false;
+
+                        showSuccessPopup = true;
+                    }
+                    else {
+                        strcpy(failMessage, "添加失败：请查看后台记录！");
+                        showFailPopup = true;
+                    }
+                }
+            }
+
+            GuiUnlock();
+
+            // 3. 【绘制】成功弹窗
+            if (showSuccessPopup)
+            {
+                DrawRectangle(0, 0, 800, 600, Fade(BLACK, 0.5f));
+                int result = GuiMessageBox((Rectangle) { 800 / 2 - 150, 600 / 2 - 60, 300, 120 },
+                    "提示", "图书添加成功！", "确定");
+                if (result >= 0) showSuccessPopup = false;
+            }
+
+            // 4. 【新增】失败弹窗
+            if (showFailPopup)
+            {
+                // 画半透明背景
+                DrawRectangle(0, 0, 800, 600, Fade(BLACK, 0.5f));
+
+                // 绘制红色边框或标题的弹窗 (这里用标准样式，标题写"错误")
+                // 使用 failMessage 变量显示具体的错误原因
+                int result = GuiMessageBox((Rectangle) { 800 / 2 - 150, 600 / 2 - 60, 300, 120 },
+                    "错误", failMessage, "确定");
+
+                if (result >= 0) showFailPopup = false; // 点击确定关闭
+            }
+
+            if (GuiButton((Rectangle) { 580, 20, 200, 50 }, "返回主页")) currentPage = PAGE_HOME;
+            }
 
         EndDrawing();
     }
@@ -122,7 +252,7 @@ int main() {
     // -----------------------------------------------------------
     // 3. 资源释放区
     // -----------------------------------------------------------
-    UnloadTexture(bookTex); // 别忘了卸载图片！
+    UnloadTexture(bookTex); 
     UnloadCodepoints(codepoints);
     UnloadFont(globalFont);
     CloseWindow();

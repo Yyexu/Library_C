@@ -5,18 +5,40 @@
 #define DATA_FILE "book_library.data"
 
 // 添加图书
-int add_book(Book book) {
-    FILE* fp = fopen(DATA_FILE, "ab"); 
-    if (!fp) {
-        printf("[系统] 无法打开图书库数据文件！\n");
-        return -1;
-    }
+int add_book(const Book* book) {
+    FILE* fp = fopen(DATA_FILE, "ab");
+    if (!fp) return -1;
 
-    fwrite(&book, sizeof(Book), 1, fp);
+    fwrite(&book->id, sizeof(int), 1, fp);
+    fwrite(&book->price, sizeof(int), 1, fp);
+    fwrite(&book->amount, sizeof(int), 1, fp);
+    fwrite(&book->category_id, sizeof(int), 1, fp);
+
+    int len;
+
+    len = strlen(book->name);
+    fwrite(&len, sizeof(int), 1, fp);
+    fwrite(book->name, 1, len, fp);
+
+    len = strlen(book->author);
+    fwrite(&len, sizeof(int), 1, fp);
+    fwrite(book->author, 1, len, fp);
+
+    len = strlen(book->publisher);
+    fwrite(&len, sizeof(int), 1, fp);
+    fwrite(book->publisher, 1, len, fp);
+
+    len = strlen(book->isbn);
+    fwrite(&len, sizeof(int), 1, fp);
+    fwrite(book->isbn, 1, len, fp);
+
     fclose(fp);
-    printf("[系统] 成功添加图书：%s（ID：%d）\n", book.name, book.id);
+    printf("[系统] 成功添加图书：%s（ID：%d）\n", book->name, book->id);
     return 0;
 }
+
+
+
 
 /*
 int query_book(int id, Book* result) {
@@ -58,4 +80,3 @@ void check_file() {
     fclose(fp);
     printf("[系统] 未检测到图书库文件，已新建空数据文件:%s\n", DATA_FILE);
 }
-

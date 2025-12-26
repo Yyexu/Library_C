@@ -15,5 +15,3 @@ typedef struct {
 
 
 Book* createBook(int id, const char* name, const char* author, const char* publisher, int price, int amount, const char* isbn, int category_id);
-
-void free_book_ptr(Book* p_book);
